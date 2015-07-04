@@ -72,7 +72,6 @@ let find_path s g =
           adj.(t)
     end
   done;
-  List.iter (fun (a, b) -> printf "ans %d->%d\n" a b) !ans;
   List.rev !ans
 
 let load_data elist =
@@ -110,7 +109,7 @@ let find_lasso init_state =
 
   let in_cycle q =
     let c_id = cmp.(q) in
-    c_sz.(c_id) >= 2 in
+    c_id >= 0 && c_sz.(c_id) >= 2 in
 
   let same_component q =
     let c_id = cmp.(q) in
@@ -172,22 +171,34 @@ let write_dotfile name path cycle =
     let b = List.exists (fun x -> x = t) c in
     a && b in
 
-  List.iter (fun x -> printf "cycle %d\n" x) cycle;
-  List.iter (fun (a, b) -> printf "path %d->%d\n" a b) path;
   write "digraph %s {" name;
+  (* final state *)
+  List.iter
+    (fun a -> write "  %s [peripheries = 2];" (state_name a))
+    !f_list;
+  (* initial state *)
+  List.iter
+    (fun a ->
+      let nm = state_name a in
+      let to_node = "to_" ^ nm in
+      write "  %s [shape = none,label=\"\"];" to_node;
+      write "  %s -> %s;" to_node nm)
+    !s0_list;
+  (* Edges *)
   List.iter
     (fun ((s, t, l), _) ->
       if in_cycle s t cycle then
-        write_edge_clr s t l "yellow"
-      else if in_path s t path then
         write_edge_clr s t l "red"
+      else if in_path s t path then
+        write_edge_clr s t l "yellow"
       else
         write_edge s t l)
     !edges;
   write "}"
 
-let main oc elist =
-  out_ch := oc;
+let main f_prefix elist =
+  let ofile = f_prefix ^ ".dot" in
+  out_ch := open_out ofile;
   load_data elist;
   let lasso =
     List.fold_left
@@ -196,7 +207,9 @@ let main oc elist =
   match lasso with
   | None ->
     printf "empty!\n";
-    write_dotfile " hoge" [] []
+    write_dotfile f_prefix [] [];
+    printf "%s created!\n" ofile
   | Some (path, cycle) ->
     printf "nonempty!\n";
-    write_dotfile " hoge" path cycle
+    write_dotfile f_prefix path cycle;
+    printf "%s created!\n" ofile

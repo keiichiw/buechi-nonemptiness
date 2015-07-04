@@ -15,6 +15,8 @@ let ident = alpha (alpha | digit)+
       { token lexbuf }
   | '\n'
       { Lexing.new_line lexbuf; token lexbuf }
+  | "#"
+      { comment lexbuf }
   | "->"
       { ARROW }
   | "S0:"
@@ -27,3 +29,10 @@ let ident = alpha (alpha | digit)+
       { ALPHA a }
   | eof
       { EOF }
+and comment = parse
+  | '\n'
+      { Lexing.new_line lexbuf; token lexbuf }
+  | eof
+      { EOF }
+  | _
+      { comment lexbuf }

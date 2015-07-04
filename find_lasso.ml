@@ -55,10 +55,10 @@ let find_path s g =
   let used = Array.make v_num false in
   let ans = ref [] in
   let q = Queue.create () in
-  Queue.push [s] q;
+  List.iter (fun (d, _) -> Queue.push [(s, d)] q) adj.(s);
   while not (Queue.is_empty q) do
     let p = Queue.pop q in
-    let t = List.hd p in
+    let (_, t) = List.hd p in
     if not used.(t) then begin
       Array.set used t true;
       if t = g then begin
@@ -68,12 +68,12 @@ let find_path s g =
         List.iter
           (fun (dst, _) ->
             if not used.(dst) then
-              Queue.push (dst::p) q)
+              Queue.push ((t, dst)::p) q)
           adj.(t)
     end
   done;
+  List.iter (fun (a, b) -> printf "ans %d->%d\n" a b) !ans;
   List.rev !ans
-
 
 let load_data elist =
   let go = function
@@ -117,7 +117,7 @@ let find_lasso init_state =
     let (_, l) =
       Array.fold_left
         (fun (idx, l) s ->
-          if cmp.(s) = c_id then
+          if s = c_id then
             idx + 1, idx :: l
           else
             idx + 1, l)
@@ -144,8 +144,50 @@ let find_lasso init_state =
     (fun x q -> add_op (lasso q) x)
     None !f_list
 
+let out_ch = ref stderr
 
-let main elist =
+let write fmt =
+  ksprintf (fun s -> fprintf (!out_ch) "%s\n" s ) fmt
+
+let write_edge s t l =
+  let a = state_name s in
+  let b = state_name t in
+  write "  %s -> %s [label = \"%c\"];" a b l
+
+let write_edge_clr s t l color =
+  let a = state_name s in
+  let b = state_name t in
+  write "  %s -> %s [label = \"%c\", color=%s];" a b l color
+
+
+let write_dotfile name path cycle =
+
+  let rec in_path s t p =
+    List.exists
+      (fun (a, b) -> a = s && b = t)
+      p in
+
+  let rec in_cycle s t c =
+    let a = List.exists (fun x -> x = s) c in
+    let b = List.exists (fun x -> x = t) c in
+    a && b in
+
+  List.iter (fun x -> printf "cycle %d\n" x) cycle;
+  List.iter (fun (a, b) -> printf "path %d->%d\n" a b) path;
+  write "digraph %s {" name;
+  List.iter
+    (fun ((s, t, l), _) ->
+      if in_cycle s t cycle then
+        write_edge_clr s t l "yellow"
+      else if in_path s t path then
+        write_edge_clr s t l "red"
+      else
+        write_edge s t l)
+    !edges;
+  write "}"
+
+let main oc elist =
+  out_ch := oc;
   load_data elist;
   let lasso =
     List.fold_left
@@ -153,6 +195,8 @@ let main elist =
       None !s0_list in
   match lasso with
   | None ->
-    printf "empty!\n"
-  | Some _ ->
-    printf "nonempty!\n"
+    printf "empty!\n";
+    write_dotfile " hoge" [] []
+  | Some (path, cycle) ->
+    printf "nonempty!\n";
+    write_dotfile " hoge" path cycle

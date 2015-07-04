@@ -24,6 +24,6 @@ let ident = alpha (alpha | digit)+
   | ident as name
       { IDENT name }
   | alpha as a
-      { ALPHA (String.make 1 a) }
+      { ALPHA a }
   | eof
       { EOF }

@@ -1,5 +1,6 @@
 open Syntax
 open Printf
+open Find_lasso
 
 let () =
   let argc = Array.length Sys.argv in
@@ -11,7 +12,8 @@ let () =
     let filebuf = Lexing.from_channel inchan in
     try
       let parse = Parser.main Lexer.token filebuf in
-      List.iter print_expr parse
+      List.iter print_expr parse;
+      Find_lasso.main parse
     with
     | Lexer.LexerError msg  ->
       eprintf "lexer error: %s" msg

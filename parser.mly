@@ -3,7 +3,8 @@
   exception ParserError of string
 %}
 
-%token <string> IDENT ALPHA
+%token <string> IDENT
+%token <char> ALPHA
 %token ARROW EOF
 %token S0
 %token FINAL

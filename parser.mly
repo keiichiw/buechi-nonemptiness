@@ -15,18 +15,18 @@
 %%
 
 main:
-| expr_list EOF
+| exprs EOF
     { $1 }
 
-expr_list:
+exprs:
+| arrow_list S0 s0_list FINAL f_list
+    { $1 @ $3 @ $5 }
+
+arrow_list:
 |
     { [] }
-| arrow expr_list
-    { $1 :: $2 }
-| S0 s0_list expr_list
-    { $2 @ $3 }
-| FINAL f_list expr_list
-    { $2 @ $3 }
+| IDENT ALPHA ARROW IDENT arrow_list
+    { (D (($1, $2), $4)) :: $5 }
 
 s0_list:
 |
@@ -41,7 +41,3 @@ f_list:
     { (F $1) :: $2 }
 | error
     { raise (ParserError "hoge") }
-
-arrow:
-| IDENT ALPHA ARROW IDENT
-    { D (($1, $2), $4) }

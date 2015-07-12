@@ -1,5 +1,6 @@
 open Printf
 open Syntax
+open Str
 type id = int
 type edge = id * id * label
 
@@ -7,6 +8,7 @@ let max_v = 100
 let states : (string * id) list ref = ref []
 let edges : (edge * id) list ref = ref []
 let adj : ((id * label) list) array = Array.make max_v []
+let self_loop : bool array = Array.make max_v false
 let r_adj = Array.make max_v []
 let s0_list : id list ref = ref []
 let f_list  : id list ref = ref []
@@ -47,8 +49,9 @@ let add_edge src dst label =
   let e_id = List.length !edges in
   edges := ((id1, id2, label), e_id) :: !edges;
   Array.set adj   id1 ((id2, label) :: adj.(id1));
-  Array.set r_adj id2 ((id1, label) :: adj.(id2))
-
+  Array.set r_adj id2 ((id1, label) :: adj.(id2));
+  if id1 = id2 then
+    Array.set self_loop id1 true
 
 let find_path s g =
   let v_num = List.length !states in
@@ -87,13 +90,15 @@ let load_data elist =
 
 let find_lasso init_state =
   let v_num = List.length !states in
+  let reachable = Array.make v_num false in
   let used = Array.make v_num false in
-  let cmp  = Array.make v_num (-1) in
+  let scc_id = Array.make v_num (-1) in
   let c_sz = Array.make v_num 0 in
   let vs   = ref [] in
 
   let rec dfs v_id =
     Array.set used v_id true;
+    Array.set reachable v_id true;
     List.iter
       (fun (t, _) -> if not used.(t) then dfs t)
       adj.(v_id);
@@ -101,18 +106,19 @@ let find_lasso init_state =
 
   let rec rdfs v_id k =
     Array.set used v_id true;
-    Array.set cmp  v_id k;
+    Array.set scc_id  v_id k;
     Array.set c_sz k (1 + c_sz.(k));
     List.iter
-      (fun (t, _) -> if not used.(t) then rdfs t k)
+      (fun (t, _) ->
+        if (not used.(t)) && reachable.(t) then rdfs t k)
       r_adj.(v_id) in
 
   let in_cycle q =
-    let c_id = cmp.(q) in
-    c_id >= 0 && c_sz.(c_id) >= 2 in
+    let c_id = scc_id.(q) in
+    self_loop.(q) || (c_id >= 0 && c_sz.(c_id) >= 2) in
 
   let same_component q =
-    let c_id = cmp.(q) in
+    let c_id = scc_id.(q) in
     let (_, l) =
       Array.fold_left
         (fun (idx, l) s ->
@@ -120,7 +126,7 @@ let find_lasso init_state =
             idx + 1, idx :: l
           else
             idx + 1, l)
-        (0, []) cmp in
+        (0, []) scc_id in
     l in
 
   let lasso q =
@@ -138,7 +144,6 @@ let find_lasso init_state =
       (rdfs v k; k+1)
     else k in
   ignore (List.fold_left go 0 !vs);
-
   List.fold_left
     (fun x q -> add_op (lasso q) x)
     None !f_list
@@ -171,7 +176,11 @@ let write_dotfile name path cycle =
     let b = List.exists (fun x -> x = t) c in
     a && b in
 
-  write "digraph %s {" name;
+  let graph_name n =
+    let lst = Str.split (Str.regexp "[./\\]") n in
+    List.hd (List.rev lst) in
+
+  write "digraph %s {" (graph_name name);
   (* final state *)
   List.iter
     (fun a -> write "  %s [peripheries = 2];" (state_name a))

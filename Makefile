@@ -1,4 +1,4 @@
 all:
-	ocamlbuild main.native
+	ocamlbuild -lib str main.native
 clean:
 	ocamlbuild -clean

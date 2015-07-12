@@ -1,0 +1,13 @@
+# no cycle including accepting state
+
+# transition function
+q0 a -> q1
+q1 a -> q2
+q2 a -> q3
+q3 a -> q2
+
+# initial states
+S0: q0
+
+# accepting states
+F: q1
